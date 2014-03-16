@@ -16,7 +16,7 @@ typedef enum{
 //csv的列数硬编码，减少动态内存分配
 typedef struct{
 	char *strarr[4];
-	//B表的重复记录
+	//该行的key是否在B表出现
 	bool is_dup;
 }CSV_ROW_A;
 
@@ -25,9 +25,6 @@ typedef struct{
 typedef struct{
 	//key str
 	char *key_str;
-	//convert to unsigned int
-	//accelerate sorting
-	unsigned int key_int;
 }CSV_ROW_B;
 
 void load_csv_file(const char *path, SqList *L, SplitType spty){
@@ -48,12 +45,12 @@ void load_csv_file(const char *path, SqList *L, SplitType spty){
 			CSV_ROW_A row_a;
 			row_a.is_dup = FALSE;
 
-			unsigned int str_arr_len = ARRAY_LEN(row_a.strarr);
+			unsigned int strarr_len = ARRAY_LEN(row_a.strarr);
 
 			char **pstr = row_a.strarr;
 			char *pb = strtok(buf, ";");
 			while(pb != NULL){
-				assert(pstr < row_a.strarr+str_arr_len);
+				assert(pstr < row_a.strarr+strarr_len);
 				
 				size_t pb_len = strlen(pb);
 				char *p = (char *)malloc(sizeof(char)*(pb_len+1));
@@ -80,6 +77,7 @@ void load_csv_file(const char *path, SqList *L, SplitType spty){
 			insert_linerseq(L, &row_b);
 		}
 	}
+	fclose(fp);
 }
 
 void visit_row_a(void *pa){
@@ -96,6 +94,39 @@ void visit_row_b(void *pb){
 	printf("%s\n", prow->key_str);
 }
 
+unsigned write_csv_file(const char *path, SqList *L){
+	FILE *fp = fopen(path, "w+");
+
+	const char *sep_str = ";";
+	unsigned step = L->typesize;
+	char *pe = (char *)L->elem;
+
+	unsigned count = 0;
+	for(int i=0; i<L->length; i++){
+		CSV_ROW_A *prow = (CSV_ROW_A *) (pe + step*i);
+
+		if (prow->is_dup == FALSE){
+			count++;
+			unsigned pstrlen = ARRAY_LEN(prow->strarr);
+			for(int j=0; j<pstrlen; j++){
+				fputs(prow->strarr[j], fp);
+
+				//写入分隔符
+				if (j != pstrlen-1){
+					fputs(sep_str, fp);
+				}else{
+					//如果需要写入换行符
+				}
+			}	
+		}
+	}
+	fclose(fp);
+
+	return count;
+}
+
+
+//A-B 方法一
 void difference(SqList *La, SqList *Lb){
 	unsigned step_a = La->typesize;
 	unsigned step_b = Lb->typesize;
@@ -109,19 +140,114 @@ void difference(SqList *La, SqList *Lb){
 			if(strcmp(pra->strarr[0], prb->key_str) == 0){
 				count++;
 				pra->is_dup = TRUE;
+				break;
 			}
 		}
 	}
-	printf("dup count:%d\n", count);
+	//printf("dup count:%d\n", count);
 }
 
-void write_csv_file(const char *path, SqList *list){
+void strategy_one(SqList *La, SqList *Lb){
+	difference(La, Lb);
+}
+
+
+//A-B 方法二
+void remove_dup(SqList *Lb){
+	unsigned step = Lb->typesize;
+	int dup_count = 0;
+
+	for(int i=0; i<Lb->length; i++){
+		char *pelem = (char *)Lb->elem + step * i;
+		const char *key_cur = ((CSV_ROW_B *)pelem)->key_str;
+		
+		for(int j=i+1; j<Lb->length; j++){
+			char *pe = (char *)Lb->elem + step * j;
+			const char *key_tp = ((CSV_ROW_B *)pe)->key_str;
+
+			if(strcmp(key_cur, key_tp) == 0){
+				dup_count++;
+				continue;
+			}
+			break;
+		}
+
+		if(dup_count != 0){
+			char *pdst = (char *)Lb->elem + step * (i+1);
+			char *psrc = (char *)Lb->elem + step * (i+dup_count+1);
+			char *pend = (char *)Lb->elem + step * Lb->length;
+
+			memmove(pdst, psrc, pend-psrc);
+			Lb->length -= dup_count;
+			dup_count = 0;
+		}
+	}
+
+}
+
+bool binary_search(SqList *Lb, const char *key){
+	assert(Lb->length > 0);
+
+	char *pe = (char *)Lb->elem;
+	unsigned step = Lb->typesize;
+
+	unsigned low = 0;
+	unsigned high = Lb->length - 1;
+	unsigned mid;
+
+	while(low <= high){
+		mid = low + ((high-low)/2);
+
+		CSV_ROW_B *pr = (CSV_ROW_B *) (pe + step*mid);
+		
+		int cmp_res = strcmp(pr->key_str, key);
+
+		if(cmp_res == 0){
+			return TRUE;
+		}else if(cmp_res > 0){
+			high = mid - 1;
+		}else{
+			low = mid + 1;
+		}
+	}
+	return FALSE;
+}
+
+void difference_bi(SqList *La, SqList *Lb){
+	unsigned step_a = La->typesize;
+	unsigned step_b = Lb->typesize;
 	
+	int count = 0;
+	for(int i=0; i<La->length; i++){
+		CSV_ROW_A *pra = (CSV_ROW_A *)((char *)La->elem + i*step_a);	
+		
+		if(binary_search(Lb, pra->strarr[0])){
+			count++;
+			pra->is_dup = TRUE;
+		}
+	}
+	//printf("dup count:%d\n", count);
+}
+
+int key_cmp(const void *pa, const void *pb){
+	CSV_ROW_B *pra = (CSV_ROW_B *)pa;
+	CSV_ROW_B *prb = (CSV_ROW_B *)pb;
+
+	return strcmp(pra->key_str, prb->key_str);
+}
+
+void strategy_two(SqList *La, SqList *Lb){
+	qsort(Lb->elem, Lb->length, Lb->typesize, key_cmp);	
+	remove_dup(Lb);
+	difference_bi(La, Lb);
 }
 
 int main(void){
-	const char *tableA = "./testA.csv";
-	const char *tableB = "./testB.csv";
+	clock_t start = clock();
+
+	const char *csv_file_A = "./testA.csv";
+	const char *csv_file_B = "./testB.csv";
+	const char *csv_file_output = "./diffA-B.csv";
 
 	SqList csv_list_a;
 	SqList csv_list_b;
@@ -129,26 +255,34 @@ int main(void){
 	init_linerseq(&csv_list_a, sizeof(CSV_ROW_A));
 	init_linerseq(&csv_list_b, sizeof(CSV_ROW_B));
 
-	load_csv_file(tableA, &csv_list_a, SplitTypeA);
-	load_csv_file(tableB, &csv_list_b, SplitTypeB);
-	
+	clock_t load_start = clock();
+	load_csv_file(csv_file_A, &csv_list_a, SplitTypeA);
+	load_csv_file(csv_file_B, &csv_list_b, SplitTypeB);
+	clock_t load_end = clock();
+	printf("load csv consume:\t %f seconds\n", (double)(load_end-load_start)/CLOCKS_PER_SEC); 
+
+
 	clock_t diff_start = clock();
 
-	//print_linerseq(&csv_list_a, visit_row_a);
-	//print_linerseq(&csv_list_b, visit_row_b);
-
-	//parse_csv_b
-
-	//sort_csv_b
-
 	//difference A-B
-	difference(&csv_list_a, &csv_list_b);
+	//strategy_one(&csv_list_a, &csv_list_b);
+
+	strategy_two(&csv_list_a, &csv_list_b);
 
 	//write A-B.csv to disk
 	clock_t diff_end = clock();
-
-	printf("diff compute time: %f seconds\n", (double)(diff_end-diff_start)/CLOCKS_PER_SEC); 
+	printf("compute A-B consume:\t %f seconds\n", (double)(diff_end-diff_start)/CLOCKS_PER_SEC); 
 	
+	clock_t write_start = clock();
+	unsigned w_lines = write_csv_file(csv_file_output, &csv_list_a);
+	clock_t write_end = clock();
+	printf("write csv consume:\t %f seconds\n", (double)(write_end-write_start)/CLOCKS_PER_SEC); 	
+
+	clock_t end = clock();
+	printf("program total consume:\t %f seconds\n", (double)(end-start)/CLOCKS_PER_SEC);
+
+	printf("totoal write:%u\n", w_lines);
+
 	return 0;
 }
 
