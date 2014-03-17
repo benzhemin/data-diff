@@ -281,7 +281,6 @@ int main(void){
 	clock_t load_end = clock();
 	printf("load csv consume:\t %f seconds\n", (double)(load_end-load_start)/CLOCKS_PER_SEC); 
 
-	
 	SqList csv_list_a;
 	SqList csv_list_b;
 
