@@ -97,7 +97,11 @@ void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 			row_b.key_str = p;
 			insert_linerseq(L, &row_b);
 		}
+
+		free(rawline.raw_str);
 	}
+
+	destory_linerseq(rawL);
 }
 
 void visit_row_a(void *pa){
