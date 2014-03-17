@@ -51,14 +51,11 @@ void load_csv_file(const char *path, SqList *L){
 	fclose(fp);
 }
 
-void parse_csv_list(const char *path, SqList *L, CSVType spty){
-	FILE *fp = fopen(path, "r");
-	//max line size
-	char buf[512];
-
-	while(fgets(buf, sizeof(buf), fp) != NULL){
-		//remove newline character
+void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 	
+	for(int i=0; i<rawL->length; i++){
+		RawLine rawline = *((RawLine *)rawL->elem + i);
+
 		//按照struct CSV_ROW_A 的格式分解
 		if(spty == CSVTypeA){
 			
@@ -72,7 +69,7 @@ void parse_csv_list(const char *path, SqList *L, CSVType spty){
 			unsigned int strarr_len = ARRAY_LEN(row_a.strarr);
 
 			char **pstr = row_a.strarr;
-			char *pb = strtok(buf, ";");
+			char *pb = strtok(rawline.raw_str, ";");
 			while(pb != NULL){
 				assert(pstr < row_a.strarr+strarr_len);
 				
@@ -91,7 +88,7 @@ void parse_csv_list(const char *path, SqList *L, CSVType spty){
 			
 			CSV_ROW_B row_b;
 			
-			char *pb = strtok(buf, ";");
+			char *pb = strtok(rawline.raw_str, ";");
 			size_t pb_len = strlen(pb);
 			char *p = (char *)malloc(sizeof(char) * (pb_len+1));
 			assert(p!=NULL);
@@ -101,7 +98,6 @@ void parse_csv_list(const char *path, SqList *L, CSVType spty){
 			insert_linerseq(L, &row_b);
 		}
 	}
-	fclose(fp);
 }
 
 void visit_row_a(void *pa){
@@ -285,18 +281,18 @@ int main(void){
 	clock_t load_end = clock();
 	printf("load csv consume:\t %f seconds\n", (double)(load_end-load_start)/CLOCKS_PER_SEC); 
 
-
-	return 0;
+	
 	SqList csv_list_a;
 	SqList csv_list_b;
 
 	init_linerseq(&csv_list_a, sizeof(CSV_ROW_A));
 	init_linerseq(&csv_list_b, sizeof(CSV_ROW_B));
 
-	
-	parse_csv_list(csv_file_A, &csv_list_a, CSVTypeA);
-	parse_csv_list(csv_file_B, &csv_list_b, CSVTypeB);
-	
+	clock_t parse_start = clock();	
+	parse_csv_list(&csv_raw_list_a, &csv_list_a, CSVTypeA);
+	parse_csv_list(&csv_raw_list_b, &csv_list_b, CSVTypeB);
+	clock_t parse_end = clock();
+	printf("parse csvA,B consume:\t %f seconds\n", (double)(parse_end-parse_start)/CLOCKS_PER_SEC); 
 
 	clock_t diff_start = clock();
 
