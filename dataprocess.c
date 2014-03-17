@@ -6,14 +6,19 @@
 #include "linerseq.h"
 
 typedef enum{
-	SplitTypeA = 0,
-	SplitTypeB
-}SplitType;
+	CSVTypeA = 0,
+	CSVTypeB
+}CSVType;
+
+//每行数据保存到buf_str中
+typedef struct {
+	char *raw_str;
+}RawLine;
 
 //csv A文件的数据结构
 //将所有列数据载入内存
 
-//csv的列数硬编码，减少动态内存分配
+//csv的列数硬编码
 typedef struct{
 	char *strarr[4];
 	//该行的key是否在B表出现
@@ -27,7 +32,26 @@ typedef struct{
 	char *key_str;
 }CSV_ROW_B;
 
-void load_csv_file(const char *path, SqList *L, SplitType spty){
+void load_csv_file(const char *path, SqList *L){
+	FILE *fp = fopen(path, "r");
+
+	char buf[512];
+	while(fgets(buf, sizeof(buf), fp) != NULL){
+		size_t len = strlen(buf);
+		char *p = (char *)malloc(sizeof(char) * (len+1));
+		assert(p != NULL);
+		strcpy(p, buf);
+
+		RawLine rawline;
+		rawline.raw_str = p;
+
+		insert_linerseq(L, &rawline);
+	}
+
+	fclose(fp);
+}
+
+void parse_csv_list(const char *path, SqList *L, CSVType spty){
 	FILE *fp = fopen(path, "r");
 	//max line size
 	char buf[512];
@@ -36,7 +60,7 @@ void load_csv_file(const char *path, SqList *L, SplitType spty){
 		//remove newline character
 	
 		//按照struct CSV_ROW_A 的格式分解
-		if(spty == SplitTypeA){
+		if(spty == CSVTypeA){
 			
 			//处理windows下换行符
 			//unix 换行符 \n 
@@ -63,7 +87,7 @@ void load_csv_file(const char *path, SqList *L, SplitType spty){
 
 			insert_linerseq(L, &row_a);
 
-		}else if(spty == SplitTypeB){
+		}else if(spty == CSVTypeB){
 			
 			CSV_ROW_B row_b;
 			
@@ -249,18 +273,30 @@ int main(void){
 	const char *csv_file_B = "./testB.csv";
 	const char *csv_file_output = "./diffA-B.csv";
 
+	SqList csv_raw_list_a;
+	SqList csv_raw_list_b;
+
+	init_linerseq(&csv_raw_list_a, sizeof(RawLine));
+	init_linerseq(&csv_raw_list_b, sizeof(RawLine));
+
+	clock_t load_start = clock();
+	load_csv_file(csv_file_A, &csv_raw_list_a);
+	load_csv_file(csv_file_B, &csv_raw_list_b);
+	clock_t load_end = clock();
+	printf("load csv consume:\t %f seconds\n", (double)(load_end-load_start)/CLOCKS_PER_SEC); 
+
+
+	return 0;
 	SqList csv_list_a;
 	SqList csv_list_b;
 
 	init_linerseq(&csv_list_a, sizeof(CSV_ROW_A));
 	init_linerseq(&csv_list_b, sizeof(CSV_ROW_B));
 
-	clock_t load_start = clock();
-	load_csv_file(csv_file_A, &csv_list_a, SplitTypeA);
-	load_csv_file(csv_file_B, &csv_list_b, SplitTypeB);
-	clock_t load_end = clock();
-	printf("load csv consume:\t %f seconds\n", (double)(load_end-load_start)/CLOCKS_PER_SEC); 
-
+	
+	parse_csv_list(csv_file_A, &csv_list_a, CSVTypeA);
+	parse_csv_list(csv_file_B, &csv_list_b, CSVTypeB);
+	
 
 	clock_t diff_start = clock();
 

@@ -3,8 +3,8 @@
 
 #include "predef.h"
 
-#define LIST_INIT_SIZE 100
-#define LIST_INCREMENT 10
+#define LIST_INIT_SIZE 1000
+#define LIST_INCREMENT 100
 
 typedef int (*CMP)(const void *pa, const void *pb);
 

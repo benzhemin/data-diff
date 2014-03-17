@@ -42,11 +42,14 @@ Status insert_linerseq_index(SqList *sq, int index, void *pelem){
 	char *p, *q;
 
 	q = (char *)sq->elem+(index-1)*step;
-	for(p=(char *)sq->elem+(sq->length-1)*step; p>=q && sq->length; p=p-step){
+	p=(char *)sq->elem+(sq->length-1)*step;
+
+	for(; p>=q && sq->length; p=p-step){
 		memcpy(p+step, p, sq->typesize);
 	}
+
 	memcpy(q, pelem, sq->typesize);
-	++(sq->length);
+	++sq->length;
 	return OK;
 }
 
