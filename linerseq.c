@@ -29,12 +29,23 @@ void check_needs_expand(SqList *sq){
 	}
 }
 
-Status insert_linerseq(SqList *sq, void *pelem){
-	return insert_linerseq_index(sq, sq->length+1, pelem);
+Status insert_inerseq_tail(SqList *sq, void *pe){
+	unsigned step = sq->typesize;
+	check_needs_expand(sq);
+
+	char *p = (char *)sq->elem + step*sq->length;
+	memcpy(p, pe, sq->typesize);
+	++sq->length;
+
+	return OK;
+}
+
+Status insert_linerseq(SqList *sq, void *pe){
+	return insert_linerseq_index(sq, sq->length+1, pe);
 }
 
 // 1<=index<=sq->length+1
-Status insert_linerseq_index(SqList *sq, int index, void *pelem){
+Status insert_linerseq_index(SqList *sq, int index, void *pe){
 	assert(index>0);
 	check_needs_expand(sq);
 
@@ -48,7 +59,7 @@ Status insert_linerseq_index(SqList *sq, int index, void *pelem){
 		memcpy(p+step, p, sq->typesize);
 	}
 
-	memcpy(q, pelem, sq->typesize);
+	memcpy(q, pe, sq->typesize);
 	++sq->length;
 	return OK;
 }

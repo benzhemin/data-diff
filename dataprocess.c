@@ -69,6 +69,27 @@ void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 			unsigned int strarr_len = ARRAY_LEN(row_a.strarr);
 
 			char **pstr = row_a.strarr;
+
+			//optimized
+			//use strstr instead of strtok
+			char *pr = rawline.raw_str;
+			char *pnext = NULL;
+
+			do{
+				pnext = strstr(pr, ";");
+				if(pnext != NULL){
+					*pnext = '\0';
+				}
+				size_t pr_len = strlen(pr);
+				char *p = (char *)malloc(sizeof(char) * (pr_len+1));
+				assert(p!=NULL);
+				strcpy(p, pr);
+
+				*pstr++ = p;
+				pr = pnext + 1;
+			}while(pnext != NULL);
+
+			/*
 			char *pb = strtok(rawline.raw_str, ";");
 			while(pb != NULL){
 				assert(pstr < row_a.strarr+strarr_len);
@@ -81,8 +102,9 @@ void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 
 				pb = strtok(NULL, ";");
 			}
+			*/
 
-			insert_linerseq(L, &row_a);
+			insert_inerseq_tail(L, &row_a);
 
 		}else if(spty == CSVTypeB){
 			
@@ -95,7 +117,7 @@ void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 			strcpy(p, pb);
 			
 			row_b.key_str = p;
-			insert_linerseq(L, &row_b);
+			insert_inerseq_tail(L, &row_b);
 		}
 
 		free(rawline.raw_str);

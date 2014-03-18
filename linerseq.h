@@ -3,8 +3,8 @@
 
 #include "predef.h"
 
-#define LIST_INIT_SIZE 1000
-#define LIST_INCREMENT 100
+#define LIST_INIT_SIZE 10000
+#define LIST_INCREMENT 1000
 
 typedef int (*CMP)(const void *pa, const void *pb);
 
@@ -23,6 +23,9 @@ void destory_linerseq(SqList *sq);
 
 //insert at tail
 Status insert_linerseq(SqList *sq, void *pe);
+
+//optimized insert at tail
+Status insert_inerseq_tail(SqList *sq, void *pe);
 
 //insert element to linerSeq
 //index starts from 1
