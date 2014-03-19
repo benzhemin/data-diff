@@ -45,7 +45,7 @@ void load_csv_file(const char *path, SqList *L){
 		RawLine rawline;
 		rawline.raw_str = p;
 
-		insert_linerseq(L, &rawline);
+		insert_inerseq_tail(L, &rawline);
 	}
 
 	fclose(fp);
