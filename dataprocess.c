@@ -75,17 +75,19 @@ void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 			char *pr = rawline.raw_str;
 			char *pnext = NULL;
 
+			
 			do{
 				pnext = strstr(pr, ";");
 				if(pnext != NULL){
 					*pnext = '\0';
 				}
-				size_t pr_len = strlen(pr);
-				char *p = (char *)malloc(sizeof(char) * (pr_len+1));
-				assert(p!=NULL);
-				strcpy(p, pr);
-
-				*pstr++ = p;
+				
+				//size_t pr_len = strlen(pr);
+				//char *p = (char *)malloc(sizeof(char) * (pr_len+1));
+				//assert(p!=NULL);
+				//strcpy(p, pr);
+				
+				*pstr++ = pr;
 				pr = pnext + 1;
 			}while(pnext != NULL);
 
@@ -110,20 +112,22 @@ void parse_csv_list(SqList *rawL, SqList *L, CSVType spty){
 			
 			CSV_ROW_B row_b;
 			
+			/*
 			char *pb = strtok(rawline.raw_str, ";");
 			size_t pb_len = strlen(pb);
 			char *p = (char *)malloc(sizeof(char) * (pb_len+1));
 			assert(p!=NULL);
 			strcpy(p, pb);
-			
-			row_b.key_str = p;
+			*/
+			char *pr = rawline.raw_str;
+			char *pnext = strstr(pr, ";");
+			if(pnext != NULL){
+				*pnext = '\0';
+			}
+			row_b.key_str = pr;
 			insert_inerseq_tail(L, &row_b);
 		}
-
-		free(rawline.raw_str);
 	}
-
-	destory_linerseq(rawL);
 }
 
 void visit_row_a(void *pa){
